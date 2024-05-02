@@ -3,7 +3,8 @@
 """
 import uuid
 import redis
-from typing import Union
+from typing import Callable, Union
+from functools import wraps
 
 
 class Cache:
@@ -43,3 +44,17 @@ class Cache:
         """ Retrieve an int value from Redis based on the given key
         """
         return self.get(key, fn=int)
+
+
+def count_calls(method: Callable) -> Callable:
+    """ Count the number of times a method is called
+    """
+    key = method.__qualname__
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """ Wrapper function
+        """
+        self._redis.incr(key)
+        return method(self, *args, **kwargs)
+    return wrapper
