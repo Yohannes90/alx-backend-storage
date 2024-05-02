@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """ Module for caching data using Redis
 """
-import uuid
-import redis
-from typing import Callable, Union
 from functools import wraps
+import redis
+from redis import Redis
+from typing import Callable, Union
+import uuid
 
 
 def count_calls(method: Callable) -> Callable:
@@ -20,6 +21,20 @@ def count_calls(method: Callable) -> Callable:
     return wrapper
 
 
+def call_history(method: Callable) -> Callable:
+    """Decorator to store the history of inputs and outputs"""
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """Wrapper function"""
+        input = str(args)
+        self._redis.rpush(f"{method.__qualname__}:inputs", input)
+        output = str(method(self, *args, **kwargs))
+        self._redis.rpush(f"{method.__qualname__}:outputs", output)
+        return output
+    return wrapper
+
+
 class Cache:
     """A class for caching data using Redis
     """
@@ -30,6 +45,7 @@ class Cache:
         self._redis.flushdb()
 
     @count_calls
+    @call_history
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """Store data in Redis
         """
