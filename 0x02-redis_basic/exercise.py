@@ -7,6 +7,19 @@ from typing import Callable, Union
 from functools import wraps
 
 
+def count_calls(method: Callable) -> Callable:
+    """ Count the number of times a method is called
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """ Wrapper function
+        """
+        key = method.__qualname__
+        self._redis.incr(key)
+        return method(self, *args, **kwargs)
+    return wrapper
+
+
 class Cache:
     """A class for caching data using Redis
     """
@@ -16,6 +29,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """Store data in Redis
         """
@@ -24,7 +38,7 @@ class Cache:
         return key
 
     def get(self, key: str,
-            fn: callable = None) -> Union[str, bytes, int, float, None]:
+            fn: Callable = None) -> Union[str, bytes, int, float, None]:
         """ Get data from Redis
         """
         if fn:
@@ -44,17 +58,3 @@ class Cache:
         """ Retrieve an int value from Redis based on the given key
         """
         return self.get(key, fn=int)
-
-
-def count_calls(method: Callable) -> Callable:
-    """ Count the number of times a method is called
-    """
-    key = method.__qualname__
-
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        """ Wrapper function
-        """
-        self._redis.incr(key)
-        return method(self, *args, **kwargs)
-    return wrapper
